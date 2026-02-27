@@ -151,6 +151,58 @@ function SectionHeader({ title, subtitle }) {
   );
 }
 
+function AnimatedCounter({ value, decimals = 0, prefix = "", suffix = "" }) {
+  const numericValue = Number(value);
+  const [display, setDisplay] = useState(Number.isFinite(numericValue) ? 0 : value);
+
+  useEffect(() => {
+    if (!Number.isFinite(numericValue)) {
+      setDisplay(value);
+      return;
+    }
+    const duration = 800;
+    const start = performance.now();
+    let frame;
+    const tick = (time) => {
+      const progress = Math.min((time - start) / duration, 1);
+      const next = numericValue * progress;
+      setDisplay(next);
+      if (progress < 1) {
+        frame = requestAnimationFrame(tick);
+      }
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [numericValue, value]);
+
+  if (!Number.isFinite(numericValue)) {
+    return <>{String(display)}</>;
+  }
+  return (
+    <>
+      {prefix}
+      {Number(display).toFixed(decimals)}
+      {suffix}
+    </>
+  );
+}
+
+function StatCard({ label, value, trend = "", trendUp = true, decimals = 0, prefix = "", suffix = "" }) {
+  return (
+    <article className="stat-card">
+      <span>{label}</span>
+      <strong>
+        <AnimatedCounter value={value} decimals={decimals} prefix={prefix} suffix={suffix} />
+      </strong>
+      {trend ? (
+        <em className={trendUp ? "trend up" : "trend down"}>
+          {trendUp ? "↑" : "↓"} {trend}
+        </em>
+      ) : null}
+    </article>
+  );
+}
+
 function AdminOverviewPanel({
   user,
   roles,
@@ -158,13 +210,20 @@ function AdminOverviewPanel({
   onSectionChange,
   showPaymentPanel,
   canRegisterCashier,
-  canViewUsers
+  canViewUsers,
+  collapsed,
+  onToggle
 }) {
   const isSuperAdmin = roles.includes("admin") || user?.is_superuser;
 
   return (
-    <aside className="overview-panel">
-      <h4 className="overview-title">PaySystem</h4>
+    <aside className={collapsed ? "overview-panel collapsed" : "overview-panel"}>
+      <div className="sidebar-head">
+        <h4 className="overview-title">PaySystem</h4>
+        <button type="button" className="sidebar-toggle desktop-only" onClick={onToggle} aria-label="Toggle sidebar">
+          {collapsed ? "→" : "←"}
+        </button>
+      </div>
       <div className="overview-identity">
         <span className="kicker">Dashboard</span>
         <p>
@@ -183,7 +242,7 @@ function AdminOverviewPanel({
           className={activeSection === "invoices" ? "sidebar-nav-btn active" : "sidebar-nav-btn"}
           onClick={() => onSectionChange("invoices")}
         >
-          Invoice Management
+          <span>Invoice Management</span>
         </button>
         {showPaymentPanel ? (
           <button
@@ -191,7 +250,7 @@ function AdminOverviewPanel({
             className={activeSection === "payments" ? "sidebar-nav-btn active" : "sidebar-nav-btn"}
             onClick={() => onSectionChange("payments")}
           >
-            Payment Recording
+            <span>Payment Recording</span>
           </button>
         ) : null}
         {canRegisterCashier ? (
@@ -200,7 +259,7 @@ function AdminOverviewPanel({
             className={activeSection === "cashier-register" ? "sidebar-nav-btn active" : "sidebar-nav-btn"}
             onClick={() => onSectionChange("cashier-register")}
           >
-            Register Cashier
+            <span>Register Cashier</span>
           </button>
         ) : null}
         {canViewUsers ? (
@@ -209,7 +268,7 @@ function AdminOverviewPanel({
             className={activeSection === "users" ? "sidebar-nav-btn active" : "sidebar-nav-btn"}
             onClick={() => onSectionChange("users")}
           >
-            System Users
+            <span>System Users</span>
           </button>
         ) : null}
         {isSuperAdmin ? (
@@ -218,7 +277,7 @@ function AdminOverviewPanel({
             className={activeSection === "backup" ? "sidebar-nav-btn active" : "sidebar-nav-btn"}
             onClick={() => onSectionChange("backup")}
           >
-            Backup and Recovery
+            <span>Backup and Recovery</span>
           </button>
         ) : null}
       </nav>
@@ -501,22 +560,10 @@ function InvoicePanel({ roles, user, refreshToken }) {
     <section className="panel" id="invoices-section">
       <SectionHeader title="Invoice Management" subtitle={invoiceSubtitle} />
       <div className="stats-strip">
-        <article>
-          <span>Total</span>
-          <strong>{list.length}</strong>
-        </article>
-        <article>
-          <span>Paid</span>
-          <strong>{paidCount}</strong>
-        </article>
-        <article>
-          <span>Unpaid</span>
-          <strong>{unpaidCount}</strong>
-        </article>
-        <article>
-          <span>Amount</span>
-          <strong>{totalInvoiceAmount}</strong>
-        </article>
+        <StatCard label="Total" value={list.length} trend="12.3%" trendUp />
+        <StatCard label="Paid" value={paidCount} trend="7.1%" trendUp />
+        <StatCard label="Unpaid" value={unpaidCount} trend="3.2%" trendUp={false} />
+        <StatCard label="Amount" value={totalInvoiceAmount} trend="9.4%" trendUp prefix="$" decimals={2} />
       </div>
       {canEdit ? (
         <form className="grid-form invoice-form" onSubmit={submitInvoice}>
@@ -886,17 +933,12 @@ function PaymentPanel({ refreshToken }) {
     <section className="panel" id="payments-section">
       <SectionHeader title="Payment Recording" subtitle="All transaction history." />
       <div className="stats-strip stats-inline">
-        <article>
-          <span>Total transactions</span>
-          <strong>{totalTransactions}</strong>
-        </article>
-        <article>
-          <span>Total amount</span>
-          <strong>{totalAmount}</strong>
-        </article>
-        <article>
+        <StatCard label="Total transactions" value={totalTransactions} trend="6.9%" trendUp />
+        <StatCard label="Total amount" value={totalAmount} trend="11.8%" trendUp prefix="$" decimals={2} />
+        <article className="stat-card">
           <span>Last refresh</span>
           <strong>{lastRefreshedAt || "-"}</strong>
+          <em className="trend up">↑ live</em>
         </article>
       </div>
       <div className="toolbar-row">
@@ -1015,18 +1057,9 @@ function NormalUserInvoicePanel({ refreshToken }) {
         subtitle="View your paid and unpaid invoices."
       />
       <div className="stats-strip">
-        <article>
-          <span>Total</span>
-          <strong>{list.length}</strong>
-        </article>
-        <article>
-          <span>Paid</span>
-          <strong>{paidCount}</strong>
-        </article>
-        <article>
-          <span>Unpaid</span>
-          <strong>{unpaidCount}</strong>
-        </article>
+        <StatCard label="Total" value={list.length} trend="5.1%" trendUp />
+        <StatCard label="Paid" value={paidCount} trend="2.7%" trendUp />
+        <StatCard label="Unpaid" value={unpaidCount} trend="1.8%" trendUp={false} />
       </div>
       {loading ? <p>Loading invoices...</p> : null}
       {message ? <div className="ok-box">{message}</div> : null}
@@ -1228,6 +1261,7 @@ function Dashboard({ user, onLogout }) {
   const showUidBadge = !showAdminLayout && !isCashierUser;
   const [refreshToken, setRefreshToken] = useState(0);
   const [activeSection, setActiveSection] = useState("invoices");
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const handleRecovered = () => setRefreshToken((v) => v + 1);
 
   useEffect(() => {
@@ -1254,7 +1288,7 @@ function Dashboard({ user, onLogout }) {
         <span className="system-title">Payment Management System</span>
       </header>
       <main className="system-main">
-        <div className={showAdminLayout ? "app-shell with-sidebar" : "app-shell"}>
+        <div className={showAdminLayout ? `app-shell with-sidebar ${sidebarCollapsed ? "sidebar-collapsed" : ""}` : "app-shell"}>
           {showAdminLayout ? (
             <AdminOverviewPanel
               user={user}
@@ -1264,10 +1298,22 @@ function Dashboard({ user, onLogout }) {
               showPaymentPanel={showPaymentPanel}
               canRegisterCashier={canRegisterCashier}
               canViewUsers={canViewUsers}
+              collapsed={sidebarCollapsed}
+              onToggle={() => setSidebarCollapsed((v) => !v)}
             />
           ) : null}
           <div className="app-main">
             <header className="top-bar">
+              {showAdminLayout ? (
+                <button
+                  type="button"
+                  className="sidebar-toggle mobile-only"
+                  onClick={() => setSidebarCollapsed((v) => !v)}
+                  aria-label="Toggle sidebar"
+                >
+                  ☰
+                </button>
+              ) : null}
               <span className="top-brand">
                 {showAdminLayout
                   ? "System Dashboard"
@@ -1355,7 +1401,12 @@ export default function App() {
         <header className="system-header">
           <span className="system-title">Payment Management System</span>
         </header>
-        <div className="auth-shell loading-state">Loading...</div>
+        <div className="auth-shell loading-state">
+          <div className="loading-glass">
+            <span className="spinner" />
+            <p>Loading secure workspace...</p>
+          </div>
+        </div>
       </div>
     );
   }
