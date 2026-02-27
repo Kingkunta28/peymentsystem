@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: payment-system-api
+    name: payment-system
     env: python
     plan: free
     buildCommand: bash build.sh
