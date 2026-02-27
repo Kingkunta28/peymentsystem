@@ -18,6 +18,8 @@ class Command(BaseCommand):
         admin.is_superuser = True
         admin.set_password(admin_password)
         admin.save()
+        admin_group, _ = Group.objects.get_or_create(name="admin")
+        admin.groups.set([admin_group])
 
         manager, _ = User.objects.get_or_create(username=manager_username)
         manager.is_staff = True

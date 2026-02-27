@@ -5,6 +5,13 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from .models import Invoice, Payment
 
 
+def effective_roles(user):
+    roles = set(user.groups.values_list('name', flat=True))
+    if user.is_superuser:
+        roles.add('admin')
+    return sorted(roles)
+
+
 class InvoiceSerializer(serializers.ModelSerializer):
     customer_uid = serializers.CharField(source='customer.profile.uid', read_only=True)
     customer_username = serializers.CharField(source='customer.username', read_only=True)
@@ -68,7 +75,7 @@ class CurrentUserSerializer(serializers.ModelSerializer):
         fields = ['id', 'uid', 'username', 'email', 'is_staff', 'is_superuser', 'roles']
 
     def get_roles(self, obj):
-        return list(obj.groups.values_list('name', flat=True))
+        return effective_roles(obj)
 
     def get_uid(self, obj):
         profile = getattr(obj, 'profile', None)
@@ -79,7 +86,7 @@ class RoleAwareTokenObtainPairSerializer(TokenObtainPairSerializer):
     @classmethod
     def get_token(cls, user):
         token = super().get_token(user)
-        token['roles'] = list(user.groups.values_list('name', flat=True))
+        token['roles'] = effective_roles(user)
         token['username'] = user.username
         token['uid'] = getattr(getattr(user, 'profile', None), 'uid', None)
         return token
@@ -105,7 +112,7 @@ class UserWithRolesSerializer(serializers.ModelSerializer):
         extra_kwargs = {'password': {'write_only': True, 'min_length': 6}}
 
     def get_roles(self, obj):
-        return list(obj.groups.values_list('name', flat=True))
+        return effective_roles(obj)
 
     def get_uid(self, obj):
         profile = getattr(obj, 'profile', None)
