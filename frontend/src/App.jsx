@@ -8,7 +8,26 @@ const PAYMENT_METHODS = [
   { value: "card", label: "Card payment" }
 ];
 
-function LoginForm({ onLogin, onSwitchToRegister, initialUsername = "" }) {
+function ThemeToggle({ theme, onToggle }) {
+  return (
+    <button type="button" className="theme-toggle" onClick={onToggle} aria-label="Toggle theme">
+      {theme === "dark" ? "Light mode" : "Dark mode"}
+    </button>
+  );
+}
+
+function PageHeader({ theme, onThemeToggle }) {
+  return (
+    <header className="system-header">
+      <span className="system-title">Payment Management System</span>
+      <div className="header-actions">
+        <ThemeToggle theme={theme} onToggle={onThemeToggle} />
+      </div>
+    </header>
+  );
+}
+
+function LoginForm({ onLogin, onSwitchToRegister, initialUsername = "", theme, onThemeToggle }) {
   const [username, setUsername] = useState(initialUsername);
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -30,9 +49,7 @@ function LoginForm({ onLogin, onSwitchToRegister, initialUsername = "" }) {
 
   return (
     <div className="system-page">
-      <header className="system-header">
-        <span className="system-title">Payment Management System</span>
-      </header>
+      <PageHeader theme={theme} onThemeToggle={onThemeToggle} />
       <div className="auth-shell">
         <form className="panel auth-panel" onSubmit={submit}>
           <div className="auth-heading">
@@ -64,7 +81,7 @@ function LoginForm({ onLogin, onSwitchToRegister, initialUsername = "" }) {
   );
 }
 
-function RegisterForm({ onSwitchToLogin, onRegistered }) {
+function RegisterForm({ onSwitchToLogin, onRegistered, theme, onThemeToggle }) {
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -94,9 +111,7 @@ function RegisterForm({ onSwitchToLogin, onRegistered }) {
 
   return (
     <div className="system-page">
-      <header className="system-header">
-        <span className="system-title">Payment Management System</span>
-      </header>
+      <PageHeader theme={theme} onThemeToggle={onThemeToggle} />
       <div className="auth-shell">
         <form className="panel auth-panel" onSubmit={submit}>
           <div className="auth-heading">
@@ -1248,7 +1263,7 @@ function SystemUsersPanel() {
   );
 }
 
-function Dashboard({ user, onLogout }) {
+function Dashboard({ user, onLogout, theme, onThemeToggle }) {
   const roles = useMemo(() => user.roles || [], [user]);
   const showPaymentPanel = user.is_staff;
   const showAdminLayout = roles.includes("admin") || roles.includes("manager") || user?.is_superuser;
@@ -1284,9 +1299,7 @@ function Dashboard({ user, onLogout }) {
 
   return (
     <div className="system-page">
-      <header className="system-header">
-        <span className="system-title">Payment Management System</span>
-      </header>
+      <PageHeader theme={theme} onThemeToggle={onThemeToggle} />
       <main className="system-main">
         <div className={showAdminLayout ? `app-shell with-sidebar ${sidebarCollapsed ? "sidebar-collapsed" : ""}` : "app-shell"}>
           {showAdminLayout ? (
@@ -1371,6 +1384,17 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [authView, setAuthView] = useState("login");
   const [prefillUsername, setPrefillUsername] = useState("");
+  const [theme, setTheme] = useState(() => localStorage.getItem("theme_mode") || "dark");
+
+  useEffect(() => {
+    document.body.classList.toggle("theme-light", theme === "light");
+    document.body.classList.toggle("theme-dark", theme === "dark");
+    localStorage.setItem("theme_mode", theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme((prev) => (prev === "dark" ? "light" : "dark"));
+  };
 
   useEffect(() => {
     async function bootstrap() {
@@ -1398,9 +1422,7 @@ export default function App() {
   if (loading) {
     return (
       <div className="system-page">
-        <header className="system-header">
-          <span className="system-title">Payment Management System</span>
-        </header>
+        <PageHeader theme={theme} onThemeToggle={toggleTheme} />
         <div className="auth-shell loading-state">
           <div className="loading-glass">
             <span className="spinner" />
@@ -1412,12 +1434,14 @@ export default function App() {
   }
 
   if (user) {
-    return <Dashboard user={user} onLogout={onLogout} />;
+    return <Dashboard user={user} onLogout={onLogout} theme={theme} onThemeToggle={toggleTheme} />;
   }
 
   if (authView === "register") {
     return (
       <RegisterForm
+        theme={theme}
+        onThemeToggle={toggleTheme}
         onSwitchToLogin={() => setAuthView("login")}
         onRegistered={(username) => {
           setPrefillUsername(username);
@@ -1430,6 +1454,8 @@ export default function App() {
   return (
     <LoginForm
       onLogin={setUser}
+      theme={theme}
+      onThemeToggle={toggleTheme}
       initialUsername={prefillUsername}
       onSwitchToRegister={() => setAuthView("register")}
     />
