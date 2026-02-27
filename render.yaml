@@ -1,10 +1,10 @@
 services:
   - type: web
     name: payment-system-api
-    runtime: python
+    env: python
     plan: free
     buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate
-    startCommand: gunicorn payment_system.wsgi:application
+    startCommand: gunicorn payment_system.wsgi:application --bind 0.0.0.0:$PORT
     envVars:
       - key: PYTHON_VERSION
         value: "3.12.7"
@@ -22,12 +22,3 @@ services:
         value: "postgresql://neondb_owner:npg_wHNjxl6ogYp3@ep-billowing-mud-aisw7fbl-pooler.c-4.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
     disk:
       enabled: false
-
-  - type: pserv
-    name: payment-system-db
-    runtime: postgres
-    plan: free
-    databaseName: payment_system
-    databaseUser: payment_system
-    databasePassword: ${postgresql.payment_system.password}
-    ipAllowList: []
