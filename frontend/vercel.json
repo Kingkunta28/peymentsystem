@@ -7,7 +7,7 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "https://payment-system-api.onrender.com/api/$1"
+      "destination": "https://payment-system-24wh.onrender.com/api/$1"
     }
   ]
 }
