@@ -1,0 +1,12 @@
+Username: testuser
+Password: TestUser@123
+Role: cashier
+
+Username: admin
+Password: Admin@123
+Role: admin (also superuser)
+
+
+Username: manager
+Password: Manager@123
+Role: manager

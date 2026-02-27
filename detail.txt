@@ -1,0 +1,226 @@
+Payment Management System - Project Details
+==========================================
+
+1. Project Overview
+-------------------
+This is a full-stack web-based payment management system built with:
+- Backend: Django + Django REST Framework + JWT authentication
+- Frontend: React (Vite)
+- Database: SQLite (local) or PostgreSQL (deployment)
+
+The system manages invoices, customer payments, payment methods, user roles, control numbers, transaction history, and backup/recovery.
+
+
+2. Tech Stack
+-------------
+Backend:
+- Django
+- djangorestframework
+- djangorestframework-simplejwt
+- django-cors-headers
+- reportlab (PDF generation)
+- psycopg2-binary (PostgreSQL driver)
+- optional deployment utilities: dj-database-url, whitenoise, gunicorn
+
+Frontend:
+- React
+- Vite
+
+
+3. Core Functional Modules
+--------------------------
+3.1 Authentication
+- Username/password login using JWT
+- Token refresh
+- Secure logout using token blacklist
+- Current user endpoint
+- Public normal-user registration endpoint
+- Admin/manager cashier-registration endpoint
+
+3.2 Role and Access Model
+- Admin:
+  - Full dashboard with invoice management, payment recording, backup/recovery, user list, cashier registration
+- Manager:
+  - Similar backoffice dashboard (without admin-only actions like backup when restricted)
+  - Can register cashier
+- Cashier:
+  - Cashier dashboard
+  - Pays invoices using generated control numbers from normal users
+  - Can search control numbers and view control-number history
+- Normal user:
+  - Read-only user dashboard for own invoices
+  - Sees paid/unpaid status
+  - Generates immutable control numbers for unpaid invoices
+  - Downloads invoice PDF after payment
+
+3.3 Invoice Management
+- Create, list, update, delete invoices (role-restricted)
+- Invoice status auto-updates to paid/unpaid based on payments
+- Each invoice stores:
+  - Customer user reference
+  - Amount
+  - Due date
+  - Status
+  - Total paid
+  - Optional control number
+
+3.4 Payment Recording
+- Payment linked to invoice
+- Stores amount, date, method, notes
+- Supports:
+  - cash
+  - bank_transfer
+  - mobile_money
+  - card
+- Invoice payment status recalculates automatically
+
+3.5 Control Number System
+- Normal users can generate control numbers for unpaid invoices
+- Control number format:
+  - 9 digits
+  - random numeric
+  - unique
+- Immutable behavior:
+  - If control number already exists, it is reused (not regenerated)
+- Cashier can search generated control numbers and pay matching invoices
+- Control number history supports paid/unpaid status search
+
+3.6 Reports and Exports
+- Monthly transaction report export as PDF (staff access)
+- Invoice PDF download endpoint (normal users only)
+
+3.7 Backup and Recovery
+- Backup export to JSON file
+- Restore from backup JSON file
+- Includes:
+  - users
+  - roles
+  - UID profiles
+  - invoices
+  - payments
+- After restore, dashboard refresh behavior shows recovered transactions
+
+
+4. Data Model Summary
+---------------------
+User:
+- Django built-in user
+- Uses groups for roles
+
+UserProfile:
+- One-to-one with user
+- UID generated only for non-staff users
+
+Invoice:
+- customer (FK -> user)
+- control_number (unique 9-digit, nullable)
+- amount
+- due_date
+- status (paid/unpaid)
+- created_at / updated_at
+
+Payment:
+- invoice (FK)
+- amount
+- payment_date
+- payment_method
+- notes
+- created_at
+
+
+5. Dashboard Structure
+----------------------
+Admin Dashboard:
+- Invoice Management
+- Payment Recording (history/report)
+- Register Cashier
+- System Users
+- Backup and Recovery
+
+Manager Dashboard:
+- Invoice Management
+- Payment Recording
+- Register Cashier
+
+Cashier Dashboard:
+- Control Number Payments (search/list/pay)
+- Control Number History (paid/unpaid search)
+
+Normal User Dashboard:
+- My Invoices (paid/unpaid)
+- Generate control number (unpaid invoices)
+- Download invoice button enabled after payment
+
+
+6. Important API Routes (Base: /api)
+------------------------------------
+Auth:
+- POST /auth/register/
+- POST /auth/register-cashier/
+- POST /auth/login/
+- POST /auth/refresh/
+- POST /auth/logout/
+- GET  /auth/me/
+
+Invoices:
+- GET/POST /invoices/
+- GET/PATCH/DELETE /invoices/{id}/
+- GET /invoices/{id}/download/
+- POST /invoices/{id}/generate_control_number/
+- GET /invoices/control_numbers/
+- GET /invoices/control_history/
+
+Payments:
+- GET/POST /payments/
+- GET/PATCH/DELETE /payments/{id}/
+- GET /payments/monthly_report/
+
+Users and Admin:
+- GET/POST /users/
+- GET/PATCH/DELETE /users/{id}/
+- GET /users/directory/
+- GET /admin/backup/
+- POST /admin/restore/
+
+
+7. Local Run Instructions
+-------------------------
+Backend:
+1. pip install -r requirements.txt
+2. python manage.py migrate
+3. python manage.py seed_roles
+4. python manage.py runserver
+
+Frontend:
+1. cd frontend
+2. npm.cmd install
+3. npm.cmd run dev
+
+
+8. Deployment Readiness Notes
+-----------------------------
+Backend deployment targets:
+- Render (Django service)
+- Uses environment-based settings for secret key, debug, hosts, CORS, DB URL
+
+Frontend deployment target:
+- Vercel (React/Vite static build)
+
+Recommended production env setup:
+- SECRET_KEY
+- DEBUG=false
+- ALLOWED_HOSTS
+- CORS_ALLOWED_ORIGINS
+- CSRF_TRUSTED_ORIGINS
+- DATABASE_URL
+
+
+9. Current System Behavior Summary
+----------------------------------
+- Role-based dashboards and restrictions are active
+- Cashier cannot register self; only admin/manager can create cashier
+- Control numbers are immutable and unique
+- Paid/unpaid history query exists for cashier
+- Backup and recovery are file-based in admin dashboard
+- Normal users can download paid invoices
+
